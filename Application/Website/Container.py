@@ -32,7 +32,6 @@ class Container:
         pass
 
 
-    @abstractmethod
     def display_previous_moves_button(self) -> None:
         # Get the first result card
         button = WebDriverWait(self.container_element, TIMEOUT).until(
