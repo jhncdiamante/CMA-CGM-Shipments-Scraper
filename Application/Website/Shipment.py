@@ -45,7 +45,7 @@ class Shipment:
                 
             logging.info(f"Found {len(containers)} containers.")
             
-            return [ContainerWithSiblings(container, self.page) for container in containers]
+            return [ContainerWithSiblings(container) for container in containers]
             
         except TimeoutException as e:
             single_container = WebDriverWait(self.page, TIMEOUT).until(

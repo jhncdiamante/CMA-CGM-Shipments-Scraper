@@ -35,5 +35,8 @@ class CMA(Website):
                 logging.info(f"Shipment {shipment_id} processed.")
                 self.search_bar = SearchBar(self._driver)
                 time.sleep(random.randint(10, 20))
+
+    def close(self):
+        self._driver.close()
                 
     

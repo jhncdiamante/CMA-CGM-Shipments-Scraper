@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -10,6 +10,7 @@ from selenium.common.exceptions import TimeoutException, ElementNotInteractableE
 from .Milestone import Milestone
 from selenium.common.exceptions import NoSuchElementException
 from .Website import retry_until_success
+
 import logging
 import time
 import random
@@ -20,10 +21,9 @@ setup_logger()
 
 TIMEOUT = 30
 
-class Container:
-    def __init__(self, container_element: WebElement, page: WebDriver):
+class Container(ABC):
+    def __init__(self, container_element: WebElement):
         self.container_element = container_element
-        self.container_page = page
         self.container_id = None
         self.milestones = None
 
@@ -44,6 +44,8 @@ class Container:
         def func():
             ref_rows = WebDriverWait(self.container_element, TIMEOUT).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, '.ico.ico-truck, .ico.ico-vessel')))
             rows = [row.find_element(By.XPATH, "../..") for row in ref_rows]
+            
+            logging.info(f"No. of Milestones: {len(rows)}")
 
             return [Milestone(milestone_element) for milestone_element in rows]
         
@@ -55,6 +57,9 @@ class Container:
             on_fail_message="Failed to get milestones. Retrying...",
             on_fail_execute_message="Failed to get milestones after 3 attempts"
         )
+    
+    def get_status(self, last_milestone: Milestone) -> str:
+        return 'Pull Out' in last_milestone.event
 
 
 
@@ -67,13 +72,14 @@ class ContainerWithSiblings(Container):
     The container class is also responsible for clicking the expand button, and getting the milestone panel and milestones.
     Each container can, and oftentimes, have multiple milestones.
     '''
-    def __init__(self, container_element: WebElement, page: WebDriver):
-        super().__init__(container_element, page)
+    def __init__(self, container_element: WebElement):
+        super().__init__(container_element)
     
         self.container_id: str = self.get_container_id() # extract container ID
         self.display_details()
         self.display_previous_events()
         self.milestones = self.get_milestones()
+        self.status = self.get_status(self.milestones[-1])
         time.sleep(random.randint(5, 10))
         
 
@@ -90,7 +96,7 @@ class ContainerWithSiblings(Container):
             func=func,
             max_retries=3,
             delay=2,
-            exceptions=(TimeoutError, TimeoutException, ElementNotInteractableException),
+            exceptions=(TimeoutError, TimeoutException, ElementNotInteractableException, NoSuchElementException),
             on_fail_message="Failed to display details. Retrying...",
             on_fail_execute_message="Failed to display details after 3 attempts")
     
@@ -122,12 +128,14 @@ class ContainerWithSiblings(Container):
 
 class ContainerWithNoSiblings(Container):
     def __init__(self, container_element: WebElement, page: WebDriver):
-        super().__init__(container_element, page)
+        super().__init__(container_element)
+        self.container_page = page
         self.container_id = self.get_container_id()
         
         self.display_previous_events()
         self.milestones = self.get_milestones()
-        logging.info(f"No. of Milestones: {len(self.milestones)}")
+        
+        self.status = self.get_status(self.milestones[-1])
         time.sleep(random.randint(5, 10))
 
     def get_container_id(self) -> str:

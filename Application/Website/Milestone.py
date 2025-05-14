@@ -2,7 +2,8 @@ import re
 from typing import Optional, Tuple
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
-
+import time
+import random
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import logging
@@ -20,9 +21,10 @@ class Milestone:
         self.event: str = self.get_event()
 
         self.vessel_id, self.vessel_name = self.get_vessel_info()
-        self.event = self.normalize_event()
+        self.normalize_event()
         logging.info(f"Extracted milestone: {self.event} on {self.date} for vessel {self.vessel_name} with ID {self.vessel_id}")
-        
+        time.sleep(random.randint(1, 3))
+
     def get_vessel_info(self) -> Tuple[Optional[str], Optional[str]]:
         try:
             vessel_voyage_element = self.milestone_element.find_element(By.CSS_SELECTOR, 'td.vesselVoyage.k-table-td')
@@ -59,7 +61,7 @@ class Milestone:
             'CONTAINER TO CONSIGNEE': 'Pull Out'
         }
 
-        return events.get(self.event.upper(), self.event)
+        self.event = events.get(self.event.upper(), self.event)
 
 
     

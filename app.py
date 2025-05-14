@@ -37,6 +37,9 @@ for shipment in cma.shipments:
                 if milestone.event in ["Arrival", "Departure"]:
                     shipment_data[f"{milestone.event} Vessel Name"] = milestone.vessel_name
                     shipment_data[f"{milestone.event} Voyage ID"] = milestone.vessel_id 
+        shipment_data["Status"] = "Completed" if container.status else "On-going"
+        shipment_data['Scraped at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         datalist.append(shipment_data)
 
 if cma.failed_shipments:
