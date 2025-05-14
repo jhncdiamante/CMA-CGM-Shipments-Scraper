@@ -1,9 +1,5 @@
-from .Website import Website, retry_until_success
+from .Website import Website
 
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support import expected_conditions as EC
-
-from selenium.webdriver.common.by import By
 from .Shipment import Shipment
 import logging
 from .SearchBar import SearchBar

@@ -9,6 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.common.exceptions import TimeoutException
 from .Milestone import Milestone
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoSuchElementException
 from .Website import retry_until_success
 import logging
 import time
@@ -32,7 +33,7 @@ class Container:
         pass
 
 
-    def display_previous_moves_button(self) -> None:
+    def display_previous_moves(self) -> None:
         # Get the first result card
         button = WebDriverWait(self.container_element, TIMEOUT).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, 'a[aria-label="Display Previous Moves"]'))
@@ -71,14 +72,14 @@ class ContainerWithSiblings(Container):
         super().__init__(container_element, page)
     
         self.container_id: str = self.get_container_id() # extract container ID
-        self.display_details_button()
-        self.display_previous_moves_button()
+        self.display_details()
+        self.display_previous_moves()
         self.milestones = self.get_milestones()
         time.sleep(random.randint(5, 10))
         
 
 
-    def display_details_button(self) -> None:
+    def display_details(self) -> None:
         # Get the first result card
         button = WebDriverWait(self.container_element, TIMEOUT).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, "section.result-card--actions"))
@@ -124,14 +125,23 @@ class ContainerWithNoSiblings(Container):
         time.sleep(random.randint(5, 10))
 
     def get_container_id(self) -> str:
-        li_element = WebDriverWait(self.container_page, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, "//li[starts-with(normalize-space(text()), 'Container')]"))
+        def func():
+            li_element = WebDriverWait(self.container_page, TIMEOUT).until(
+                EC.presence_of_element_located((By.XPATH, "//li[starts-with(normalize-space(text()), 'Container')]"))
+            )
+            container_id = li_element.find_element(By.TAG_NAME, "strong").text.strip()
+            
+            logging.info(f"Extracted Container ID: {container_id}")
+            return container_id
+        
+        return retry_until_success(
+            func=func,
+            max_retries=3,
+            delay=2,
+            exceptions=(TimeoutError, TimeoutException, NoSuchElementException),
+            on_fail_message="Failed to get container ID. Retrying...",
+            on_fail_execute_message="Failed to get container ID after 3 attempts"
         )
-        container_id = li_element.find_element(By.TAG_NAME, "strong").text.strip()
-         
-        logging.info(f"Extracted Container ID: {container_id}")
-        return container_id
-    
     
 
     
