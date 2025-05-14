@@ -1,0 +1,22 @@
+# Ignore virtual environments
+venv/
+.env/
+ENV/
+env/
+*.env/
+*.log
+*.csv
+*.xlsx
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore compiled C files
+*.so
+
+# Ignore Python bytecode
+*.pyo
+*.pyc
+*.pyd

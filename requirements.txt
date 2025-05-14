@@ -1,0 +1,6 @@
+fake-useragent==1.5.1
+pandas==2.2.3
+setuptools==78.1.0
+undetected-chromedriver==3.5.5
+openpyxl==3.1.2
+
