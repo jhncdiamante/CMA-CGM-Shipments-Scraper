@@ -17,7 +17,7 @@ from ..Log.logging_config import setup_logger
 setup_logger()
 from .helpers import retryable 
 
-# SuperClass Container 
+# SuperClassContainer 
 DISPLAY_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]'
 REFERENCE_ROWS = '.ico.ico-truck, .ico.ico-vessel'
 GRANDPARENT_ELEMENT = '../..'
