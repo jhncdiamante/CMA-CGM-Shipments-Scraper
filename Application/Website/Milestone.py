@@ -58,7 +58,7 @@ class Milestone:
             'VESSEL DEPARTURE': 'Departure',
             'VESSEL ARRIVAL': 'Arrival',
             'DISCHARGED IN TRANSHIPMENT': 'Discharge',
-            'CONTAINER TO CONSIGNEE': 'Pull Out'
+            'CONTAINER TO CONSIGNEE': 'Gate out'
         }
 
         self.event = events.get(self.event.upper(), self.event)

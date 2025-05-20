@@ -12,7 +12,7 @@ elif INPUT_FILE_PATH.endswith(".xlsx"):
 first_col_list = df.iloc[:, 0].dropna().unique().tolist()
 cma = CMA("https://www.cma-cgm.com/ebusiness/tracking/search")
 cma.start(first_col_list)
-milestone_keys = ['Gate in', 'Departure', 'Arrival', 'Discharge', 'Pull Out']
+milestone_keys = ['Gate in', 'Departure', 'Arrival', 'Discharge', 'Gate out']
 datalist = []
 for shipment in cma.shipments:
     shipment_id = shipment.shipment_id
@@ -24,20 +24,25 @@ for shipment in cma.shipments:
                           "Arrival": None,
                           "Departure": None,
                           "Discharge": None,
-                          "Pull Out": None}
+                          "Gate out": None}
+        
+        m_keys = milestone_keys if container.status else milestone_keys[:1]
         for milestone in container.milestones:
-            if milestone.event not in milestone_keys:
+            if milestone.event not in m_keys:
                     continue  # skip unnecessary milestones
 
                 # this control flow records the first occurrence of Gate in and Departure
                 # and the last occurrence of Arrival, Discharge, and Gate out for delivery
 
-            if (shipment_data[milestone.event] is not None and milestone.event not in ["Gate in", "Departure"]) or (shipment_data[milestone.event] is None):
+            if (shipment_data[milestone.event] is not None and milestone.event not in milestone_keys[:1]) or (shipment_data[milestone.event] is None):
                 shipment_data[milestone.event] = milestone.date
                 if milestone.event in ["Arrival", "Departure"]:
                     shipment_data[f"{milestone.event} Vessel Name"] = milestone.vessel_name
                     shipment_data[f"{milestone.event} Voyage ID"] = milestone.vessel_id 
+
         shipment_data["Status"] = "Completed" if container.status else "On-going"
+        shipment_data["ETA"] = ''
+
         shipment_data['Scraped at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         datalist.append(shipment_data)

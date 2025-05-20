@@ -13,13 +13,14 @@ class CMA(Website):
     def __init__(self, base_url):
         super().__init__(base_url)
         self.open_page(self._base_url)
-        self._driver.maximize_window()
         self.search_bar = SearchBar(self._driver)
 
         self.shipments = [] # list of Shipment objects
         self.failed_shipments = []
 
     def start(self, shipment_ids: list[str]):
+        
+        self._driver.maximize_window()
         for shipment_id in shipment_ids:
             
             self.search_bar.clear()
