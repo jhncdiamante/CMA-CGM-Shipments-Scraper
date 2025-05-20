@@ -21,8 +21,6 @@ from .helpers import retryable
 
 TIMEOUT = 30
 
-# Bill of Lading number pattern: exactly 9 digits
-BILL_OF_LADING_PATTERN = r'^\d{9}$'
 
 CONTAINER_CLASS_NAME = "cardelem"
 SINGLE_CONTAINER_ID = "trackingsearchsection"
@@ -35,8 +33,6 @@ class Shipment:
     The shipment class is initialized by providing a shipment ID, and a WebDriver instance of the full page.
     '''
     def __init__(self, shipment_id: str, page: WebDriver):
-        if not re.match(BILL_OF_LADING_PATTERN, shipment_id):
-            raise InvalidShipmentError(shipment_id, "Invalid shipment ID")
             
         self.page: WebDriver = page
         self.shipment_id: str = shipment_id

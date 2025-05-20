@@ -11,7 +11,7 @@ elif INPUT_FILE_PATH.endswith(".xlsx"):
 # Convert the first column to a list of BL numbers
 first_col_list = df.iloc[:, 0].dropna().unique().tolist()
 cma = CMA("https://www.cma-cgm.com/ebusiness/tracking/search")
-cma.start(first_col_list)
+cma.start(first_col_list[:1])
 milestone_keys = ['Gate in', 'Departure', 'Arrival', 'Discharge', 'Gate out']
 datalist = []
 for shipment in cma.shipments:
@@ -26,7 +26,7 @@ for shipment in cma.shipments:
                           "Discharge": None,
                           "Gate out": None}
         
-        m_keys = milestone_keys if container.status else milestone_keys[:1]
+        m_keys = milestone_keys if container.get_status() else milestone_keys[:2]
         for milestone in container.milestones:
             if milestone.event not in m_keys:
                     continue  # skip unnecessary milestones
@@ -40,8 +40,8 @@ for shipment in cma.shipments:
                     shipment_data[f"{milestone.event} Vessel Name"] = milestone.vessel_name
                     shipment_data[f"{milestone.event} Voyage ID"] = milestone.vessel_id 
 
-        shipment_data["Status"] = "Completed" if container.status else "On-going"
-        shipment_data["ETA"] = ''
+        shipment_data["Status"] = "Completed" if container.get_status() else "On-going"
+        shipment_data["ETA"] = container.eta
 
         shipment_data['Scraped at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         

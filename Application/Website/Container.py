@@ -6,7 +6,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from selenium.common.exceptions import TimeoutException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, ElementNotInteractableException, ElementClickInterceptedException
 from .Milestone import Milestone
 from selenium.common.exceptions import NoSuchElementException
 
@@ -28,6 +28,9 @@ CONTAINER_WS_ID_PANEL_CSS_SELECTOR = 'section.result-card--content'
 CONTAINER_WS_ID_ELEMENT_XPATH = './/dl[@class="container-ref"]/dt/span[1]'
 CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR = "section.result-card--actions"
 
+# Container with no siblings
+CONTAINER_WNS_ID_XPATH = "//li[starts-with(normalize-space(text()), 'Container')]"
+
 
 TIMEOUT = 30
 
@@ -47,16 +50,16 @@ class Container(ABC):
     def get_container_id(self) -> str:
         pass
 
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutError, TimeoutException), on_fail_message="Failed to display previous events. Retrying...", on_fail_execute_message="Failed to display previous events after 3 attempts")
+    @retryable(max_retries=3, delay=2, exceptions=(ElementNotInteractableException, TimeoutException, ElementClickInterceptedException), on_fail_message="Failed to display previous events. Retrying...", on_fail_execute_message="Failed to display previous events after 3 attempts")
     def display_previous_events(self) -> None:
         display_previous_events_button = WebDriverWait(self.container_element, TIMEOUT).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
         )
         display_previous_events_button.click()
         time.sleep(random.randint(5, 10)) # wait for DOM changes
 
 
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutError, TimeoutException), on_fail_message="Failed to get milestones. Retrying...", on_fail_execute_message="Failed to get milestones after 3 attempts")
+    @retryable(max_retries=5, delay=2, exceptions=(TimeoutException), on_fail_message="Failed to get milestones. Retrying...", on_fail_execute_message="Failed to get milestones after 5 attempts")
     def get_milestones(self):
         # milestone elements have a complex hierarchy but
         # every event element has a sibling with span children containing truck or vessel icon
@@ -70,9 +73,13 @@ class Container(ABC):
         return [Milestone(milestone_element) for milestone_element in rows]
         
 
-
-    def get_status(self, last_milestone: Milestone) -> bool:
-        return last_milestone.event == "Gate out"
+    def get_status(self) -> bool:
+        try:
+            if len(self.milestones) == 0:
+                return False
+            return self.milestones[-1].event == "Gate out"
+        except IndexError:
+            raise IndexError("No milestones found for container with no siblings yet. Unable to get status.")
 
 
 
@@ -92,8 +99,7 @@ class ContainerWithSiblings(Container):
         self.display_details()
         self.display_previous_events()
         self.milestones = self.get_milestones()
-        self.status = self.get_status(self.milestones[-1])
-        self.eta = self.get_eta()
+        self.eta = self.get_estimated_time_of_arrival() if self.milestones else ""
         time.sleep(random.randint(5, 10))
 
         
@@ -109,7 +115,7 @@ class ContainerWithSiblings(Container):
         logging.info(f"Extracted ETA: {eta_info}")
         return eta_info
        
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutError, TimeoutException, ElementNotInteractableException, NoSuchElementException), on_fail_message="Failed to display details. Retrying...", on_fail_execute_message="Failed to display details after 3 attempts")
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, ElementNotInteractableException, NoSuchElementException), on_fail_message="Failed to display details. Retrying...", on_fail_execute_message="Failed to display details after 3 attempts")
     def display_details(self) -> None:
        
         button = WebDriverWait(self.container_element, TIMEOUT).until(
@@ -117,7 +123,7 @@ class ContainerWithSiblings(Container):
         )
         button.find_element(By.CSS_SELECTOR, "label").click()
     
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutError, TimeoutException, NoSuchElementException), on_fail_message="Failed to get container ID. Retrying...", on_fail_execute_message="Failed to get container ID after 3 attempts")
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException), on_fail_message="Failed to get container ID. Retrying...", on_fail_execute_message="Failed to get container ID after 3 attempts")
     def get_container_id(self) -> str:
         logging.info("Getting container ID...")
         container_id_panel = WebDriverWait(self.container_element, TIMEOUT).until(
@@ -139,8 +145,7 @@ class ContainerWithNoSiblings(Container):
         self.display_previous_events()
         self.milestones = self.get_milestones()
         
-        self.status = self.get_status(self.milestones[-1])
-        self.eta = self.get_eta()
+        self.eta = self.get_estimated_time_of_arrival() if self.milestones else ""
         time.sleep(random.randint(5, 10))
 
     def get_estimated_time_of_arrival(self) -> str:
@@ -150,11 +155,11 @@ class ContainerWithNoSiblings(Container):
             raise IndexError("No milestones found for container with no siblings yet. Unable to get ETA.")
 
 
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutError, TimeoutException, NoSuchElementException), on_fail_message="Failed to get container ID. Retrying...", on_fail_execute_message="Failed to get container ID after 3 attempts")
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException), on_fail_message="Failed to get container ID. Retrying...", on_fail_execute_message="Failed to get container ID after 3 attempts")
     def get_container_id(self) -> str:
       
         li_element = WebDriverWait(self.container_page, TIMEOUT).until(
-            EC.presence_of_element_located((By.XPATH, "//li[starts-with(normalize-space(text()), 'Container')]"))
+            EC.presence_of_element_located((By.XPATH, CONTAINER_WNS_ID_XPATH))
         )
         container_id = li_element.find_element(By.TAG_NAME, "strong").text.strip()
         

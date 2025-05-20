@@ -7,12 +7,21 @@ import random
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import logging
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from .helpers import retryable
 
 from ..Log.logging_config import setup_logger
 setup_logger()
 
+VESSEL_VOYAGE_CSS_SELECTOR = 'td.vesselVoyage.k-table-td'
+VESSEL_NAME_XPATH = './/a[1]'
+VESSEL_REFERENCE_XPATH = './/a[2]'
+DATE_CSS_SELECTOR = '.calendar'
+TIME_CSS_SELECTOR = '.time'
 TIMEOUT = 30
+EVENT_CSS_SELECTOR = 'span.capsule'
+
+
 class Milestone:
     def __init__(self, milestone_element: WebElement):
         self.milestone_element = milestone_element
@@ -25,17 +34,18 @@ class Milestone:
         logging.info(f"Extracted milestone: {self.event} on {self.date} for vessel {self.vessel_name} with ID {self.vessel_id}")
         time.sleep(random.randint(1, 3))
 
+  
     def get_vessel_info(self) -> Tuple[Optional[str], Optional[str]]:
         try:
-            vessel_voyage_element = self.milestone_element.find_element(By.CSS_SELECTOR, 'td.vesselVoyage.k-table-td')
+            vessel_voyage_element = self.milestone_element.find_element(By.CSS_SELECTOR, VESSEL_VOYAGE_CSS_SELECTOR)
 
-            vessel_name = vessel_voyage_element.find_element(By.XPATH, './/a[1]').text.strip()
+            vessel_name = vessel_voyage_element.find_element(By.XPATH, VESSEL_NAME_XPATH).text.strip()
 
             # Extract the voyage reference (second <a> element text)
-            voyage_reference = vessel_voyage_element.find_element(By.XPATH, './/a[2]').text
+            voyage_reference = vessel_voyage_element.find_element(By.XPATH, VESSEL_REFERENCE_XPATH).text
             match = re.search(r'\(\s*(\S+)\)', voyage_reference)
 
-            voyage_reference = match.group(1) if match else ''
+            voyage_reference = match.group(1) if match else ""
         except NoSuchElementException:
             voyage_reference = None
             vessel_name = None
@@ -43,13 +53,15 @@ class Milestone:
         # Combine both into a single string
         return voyage_reference, vessel_name
     
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException), on_fail_message="Failed to get milestone event. Retrying...", on_fail_execute_message="Failed to get milestone event after 3 attempts")
     def get_event(self) -> str:
-        return self.milestone_element.find_element(By.CSS_SELECTOR, 'span.capsule').text.strip()
+        return WebDriverWait(self.milestone_element, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, EVENT_CSS_SELECTOR))).text.strip()
     
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException), on_fail_message="Failed to get milestone event date. Retrying...", on_fail_execute_message="Failed to get milestone event date after 3 attempts")
     def get_date(self) -> str:
         date_time_element = WebDriverWait(self.milestone_element, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'td.date.k-table-td')))
 
-        return date_time_element.find_element(By.CSS_SELECTOR, '.calendar').text + ' ' + date_time_element.find_element(By.CSS_SELECTOR, '.time').text
+        return date_time_element.find_element(By.CSS_SELECTOR, DATE_CSS_SELECTOR).text + ' ' + date_time_element.find_element(By.CSS_SELECTOR, TIME_CSS_SELECTOR).text
 
 
     def normalize_event(self) -> str:
@@ -58,7 +70,8 @@ class Milestone:
             'VESSEL DEPARTURE': 'Departure',
             'VESSEL ARRIVAL': 'Arrival',
             'DISCHARGED IN TRANSHIPMENT': 'Discharge',
-            'CONTAINER TO CONSIGNEE': 'Gate out'
+            'CONTAINER TO CONSIGNEE': 'Gate out',
+            'LOADED ON BOARD': 'Gate in' # for vietnam milestones
         }
 
         self.event = events.get(self.event.upper(), self.event)
