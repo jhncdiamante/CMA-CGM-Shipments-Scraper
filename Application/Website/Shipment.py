@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from Application.Website.Container import Container
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.common.exceptions import TimeoutException
-from .exceptions import ShipmentTimeoutError, ContainerNotFoundError, InvalidShipmentError
+from .exceptions import ShipmentTimeoutError, ContainerNotFoundError
 
 
 import logging
